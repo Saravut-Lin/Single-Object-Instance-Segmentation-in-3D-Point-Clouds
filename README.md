@@ -1,97 +1,160 @@
-# Stratified Transformer for 3D Point Cloud Segmentation
-*Xin Lai<sup>\*</sup>, Jianhui Liu<sup>\*</sup>, Li Jiang, Liwei Wang, Hengshuang Zhao, Shu Liu, Xiaojuan Qi, Jiaya Jia*
 
-This is the official PyTorch implementation of our paper [**Stratified Transformer for 3D Point Cloud Segmentation**](https://arxiv.org/pdf/2203.14508.pdf) that has been accepted to CVPR 2022. [\[arXiv\]](https://arxiv.org/pdf/2203.14508.pdf) [\[CVF\]](https://openaccess.thecvf.com/content/CVPR2022/papers/Lai_Stratified_Transformer_for_3D_Point_Cloud_Segmentation_CVPR_2022_paper.pdf)
 
-<div align="center">
-  <img src="figs/fig.jpg"/>
-</div>
+# Stratified Transformer (PyTorch) — MiniMarket Semantic Segmentation
 
-# Highlight 
-1. Our method (*Stratified Transformer*) achieves the state-of-the-art performance on 3D point cloud semantic segmentation on both S3DIS and ScanNetv2 datasets. **It is the first time for a point-based method to outperform the voxel-based ones**, such as SparseConvNet and MinkowskiNet;
-2. *Stratified Transformer* is point-based, and constructed by Transformer with standard multi-head self-attention, enjoying large receptive field, robust generalization ability as well as competitive performance;
-3. This repository develops a memory-efficient implementation to combat the issue of **variant-length tokens** with several CUDA kernels, avoiding unnecessary momery occupation of vacant tokens. We also use shared memory for further acceleration.
+Stratified Transformer implemented in PyTorch for 3D point‑cloud **semantic segmentation** (object vs. background) on MiniMarket‑style scenes. Train on HDF5 datasets and run inference on raw `.pcd` scenes.
 
-# Get Started
+---
 
-## Environment
+## Quick Start
 
-1. Install dependencies
+### 1) Environment
+Create and activate the conda environment from the provided YAML:
 
-```
-pip install -r requirements.txt
-```
+```bash
+# clone the repo
+git clone https://github.com/Saravut-Lin/Stratified-Transformer.git
+cd Stratified-Transformer
 
-If you have any problem with the above command, you can also install them by
-
-```
-pip install torch_sparse==0.6.12
-pip install torch_points3d==1.3.0
-pip install tensorboard timm termcolor tensorboardX
+# create and activate the environment
+conda env create -f stratified_env.yml
+conda activate stratified   # or the name defined inside the YAML
 ```
 
-2. Compile pointops
+---
 
-Make sure you have installed `gcc` and `cuda`, and `nvcc` can work (Note that if you install cuda by conda, it won't provide nvcc and you should install cuda manually.). Then, compile and install pointops2 as follows. (We have tested on gcc==7.5.0 and cuda==10.1)
-```
-cd lib/pointops2
-python3 setup.py install
-```
+### 2) Dataset
+Generate the dataset using the **MiniMarket dataset processing** repo, then copy the produced HDF5 into this repo’s `dataset/market/` folder.
 
-## Datasets Preparation
-
-### S3DIS
-Please refer to https://github.com/yanx27/Pointnet_Pointnet2_pytorch for S3DIS preprocessing. Then modify the `data_root` entry in the .yaml configuration file.
-
-### ScanNetv2
-Please refer to https://github.com/dvlab-research/PointGroup for the ScanNetv2 preprocessing. Then change the `data_root` entry in the .yaml configuration file accordingly.
-
-## Training
-
-### S3DIS
-- Stratified Transformer
-```
-python3 train.py --config config/s3dis/s3dis_stratified_transformer.yaml
+```bash
+git clone https://github.com/msorour/MiniMarket_dataset_processing.git
+cd MiniMarket_dataset_processing
+# Follow that repo's instructions to produce the .h5 /.hdf5 file
 ```
 
-- 3DSwin Transformer (The vanilla version shown in our paper)
-```
-python3 train.py --config config/s3dis/s3dis_swin3d_transformer.yaml
+Place the generated file here:
+
+```text
+Stratified-Transformer/
+└─ dataset/
+   └─ market/
+      └─ jam_hartleys_strawberry_300gm_1200_2048_segmentation_20480_12000   # ← your generated file (name is up to you)
 ```
 
-### ScanNetv2
-- Stratified Transformer
-```
-python3 train.py --config config/scannetv2/scannetv2_stratified_transformer.yaml
-```
+> If you use a different path/filename, adjust it in the config or pass overrides on the CLI.
 
-- 3DSwin Transformer (The vanilla version shown in our paper)
-```
-python3 train.py --config config/scannetv2/scannetv2_swin3d_transformer.yaml
-```
+---
 
-Note: It is normal to see the the results on S3DIS fluctuate between -0.5\% and +0.5\% mIoU maybe because the size of S3DIS is relatively small, while the results on ScanNetv2 are relatively stable.
+### 3) Train
+Run MiniMarket semantic‑segmentation training using the provided config:
 
-## Testing
-For testing, first change the `model_path`, `save_folder` and `data_root_val` (if applicable) accordingly. Then, run the following command. 
-```
-python3 test.py --config [YOUR_CONFIG_PATH]
+```bash
+python train_market.py --config config/market/market_stratified_transformer.yaml
+# optional: python train_market.py -h
 ```
 
-## Pre-trained Models
+The script logs metrics and saves checkpoints under `runs/`; **note the best checkpoint path** (best epoch was ~70 in our runs).
 
-For your convenience, you can download the pre-trained models and training/testing logs from [Here](https://mycuhk-my.sharepoint.com/:f:/g/personal/1155154502_link_cuhk_edu_hk/EihXWr_HEnJIvR_M0_YRbSgBV-6VEIhmbOA9TMyCmKH35Q?e=hLAPNi).
+---
 
+### 4) Inference on real‑world scenes (`.pcd`)
+Use your saved checkpoint to run inference on a PCD file. Example PCDs live under **`realworld_scene/`**.
 
-# Citation
-If you find this project useful, please consider citing:
-
+**Generic usage**
+```bash
+python test_infer.py \
+  --config config/market/market_stratified_transformer.yaml \
+  --model_path runs/<your_run_name>/model/model_best.pth \
+  --input_pcd realworld_scene/<scene>.pcd \
+  --output_ply result/real_world/segmentation/<dest_dir>/<outfile>.ply \
+  DATA.data_name=market TRAIN.voxel_size=0.02 TRAIN.max_num_neighbors=32 TRAIN.grid_size=0.02
 ```
-@inproceedings{lai2022stratified,
-  title={Stratified Transformer for 3D Point Cloud Segmentation},
-  author={Lai, Xin and Liu, Jianhui and Jiang, Li and Wang, Liwei and Zhao, Hengshuang and Liu, Shu and Qi, Xiaojuan and Jia, Jiaya},
-  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition},
-  pages={8500--8509},
-  year={2022}
-}
+
+**Example (from our experiments)**
+```bash
+python test_infer.py \
+  --config /home/s2671222/Stratified-Transformer/config/market/market_stratified_transformer.yaml \
+  --model_path /home/s2671222/Stratified-Transformer/runs/market_stratified_transformer3/model/model_best.pth \
+  --input_pcd /home/s2671222/Stratified-Transformer/realworld_scene/realworld_scene_1.pcd \
+  --output_ply /home/s2671222/Stratified-Transformer/result/real_world/segmentation/my_scene_mask/scene_mask111.ply \
+  DATA.data_name=market \
+  TRAIN.voxel_size=0.02 \
+  TRAIN.max_num_neighbors=32 \
+  TRAIN.grid_size=0.02
 ```
+
+The inference utility voxelises the scene, supports chunk‑wise processing with voting, and writes a colorised `.ply` mask (red = target, blue = background).
+
+---
+
+## Results (Summary)
+
+### Training performance
+- Trained for **95 epochs** with early stopping (patience 25).
+- Training mIoU: **0.3101 → 0.5443**; mAcc: **0.6652 → 0.8293**; allAcc: **0.4859 → 0.7537**.
+- Best checkpoint occurred earlier at **epoch 70**.
+
+**Validation example (best epoch 70)** — ground truth (left) and prediction (right):
+
+![Validation mask example](figs/st_iou.png)
+
+### Validation performance
+- Epoch 1: mIoU **0.4034**, mAcc **0.7457**, allAcc **0.6012**.
+- **Peak** at epoch **70**: mIoU **0.7556**, mAcc **0.8504**, allAcc **0.9206**.
+- Class IoUs at best epoch: background **0.9098**, target **0.6013**.
+- By epoch 95: mIoU **0.6945** (IoU **0.8477/0.5414** for bg/obj), mAcc **0.9032**, allAcc **0.8709**.
+- Patterns: accuracy can remain high under class imbalance even when IoU softens.
+
+### Real‑world PCD inference
+- Using the voxelised, chunk‑wise pipeline, mean runtime was **115.17 s** per scene over 10 PCDs (range **71.55–147.82 s**).
+- Typical outcome: fragmented target mask, false‑positive islands on neighbouring bottles/surfaces, and background speckle. Boundaries are not coherent, so the model often fails the qualitative pass criterion in clutter.
+
+![Real‑world PCD inference example](figs/inference_st.png)
+
+> In practice, larger `TRAIN.voxel_size` values can speed up inference but may further degrade boundary quality.
+
+---
+
+## Repository Layout
+
+```text
+Stratified-Transformer/
+├─ train_market.py                    # training entry point (MiniMarket)
+├─ test_infer.py                      # inference on real-world PCDs
+├─ config/market/market_stratified_transformer.yaml
+├─ dataset/
+│  └─ market/                         # place your generated HDF5 file here
+├─ realworld_scene/                    # example PCD scenes for inference
+├─ runs/                               # training outputs (checkpoints, logs)
+├─ result/real_world/segmentation/     # inference outputs (.ply masks)
+├─ figs/                               # figures used in this README
+└─ stratified_env.yml                  # conda environment
+```
+
+---
+
+## Tips & Troubleshooting
+- **Speed vs. quality:** Increase `TRAIN.voxel_size`/`TRAIN.grid_size` to speed up inference; decrease for finer masks (higher memory/time cost).
+- **Neighbors:** `TRAIN.max_num_neighbors` controls local attention neighborhoods; tune alongside voxel/grid size.
+- **OOM / memory:** Reduce batch size or voxel density; ensure swap is enabled if training on limited GPUs.
+- **Paths:** Double‑check dataset and checkpoint paths and CLI overrides.
+
+---
+
+## Acknowledgments
+- **Model:** Stratified Transformer for 3D point cloud segmentation.
+- **Dataset preparation:** [MiniMarket_dataset_processing](https://github.com/msorour/MiniMarket_dataset_processing).
+
+---
+
+## License
+See the repository’s `LICENSE` file.
+
+---
+
+## Reproduction checklist
+- [x] `conda env create -f stratified_env.yml && conda activate stratified`
+- [x] Generate HDF5 with `MiniMarket_dataset_processing` → place in `./dataset/market/`
+- [x] `python train_market.py --config config/market/market_stratified_transformer.yaml` → note best checkpoint (e.g., epoch 70)
+- [x] `python test_infer.py --config ... --model_path ... --input_pcd realworld_scene/<scene>.pcd --output_ply result/real_world/segmentation/<dir>/<file>.ply`
+- [x] Tune voxel/grid size and neighbors as needed for your hardware
