@@ -1,0 +1,3 @@
+[submodule "torch-points-kernels"]
+	path = torch-points-kernels
+	url = https://github.com/nicolas-chaulet/torch-points-kernels.git

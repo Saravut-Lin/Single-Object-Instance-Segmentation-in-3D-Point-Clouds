@@ -1,0 +1,5 @@
+Total points: 358945
+Target points: 70
+Background points: 358875
+Target ratio: 0.0002
+Confidence threshold: 0.5

@@ -1,0 +1,77 @@
+DATA:
+  data_name: market
+  data_root:  /home/s2671222/Stratified-Transformer/Dataset/market/jam_hartleys_strawberry_300gm_1200_2048_segmentation_20480_12000
+  classes: 2
+  fea_dim: 3
+  voxel_size: 0.02
+  voxel_max: 80000
+  loop: 2
+
+TRAIN:
+  # model architecture
+  arch: stratified_transformer
+  stem_transformer: True
+  use_xyz: True
+  sync_bn: True
+  rel_query: True
+  rel_key: True
+  rel_value: True
+  quant_size: 0.01
+  downsample_scale: 8
+  num_layers: 4
+  patch_size: 1
+  window_size: 4
+  depths: [2, 2, 6, 2]
+  channels: [48, 96, 192, 384]
+  num_heads: [3, 6, 12, 24]
+  up_k: 3
+  drop_path_rate: 0.3
+  concat_xyz: True
+  grid_size: 0.02
+  max_batch_points: 81920
+  max_num_neighbors: 34
+  ratio: 0.25
+  k: 16
+
+  # training schedule & augmentation
+  aug: True
+  transformer_lr_scale: 0.1
+  jitter_sigma: 0.005
+  jitter_clip: 0.02
+  scheduler_update: epoch
+  scheduler: MultiStep
+  warmup: linear
+  warmup_iters: 1500
+  warmup_ratio: 0.000001
+  use_amp: True
+  optimizer: AdamW
+  ignore_label: 255
+  class_weight: [0.55556, 5]
+  train_gpu: [0]
+  workers: 4
+  batch_size: 4
+  batch_size_val: 2
+  base_lr: 0.006
+  epochs: 100
+  start_epoch: 0
+  step_epoch: [10, 20, 40, 60, 80]
+  multiplier: 0.1
+  momentum: 0.9
+  weight_decay: 0.01
+  drop_rate: 0.5
+  manual_seed: 123
+  print_freq: 10
+  save_freq: 5
+  save_path: runs/market_stratified_transformer3
+  weight:   # optional path to pretrained .pth
+  resume:   #/home/s2671222/Stratified-Transformer/runs/market_stratified_transformer3/model/model_last.pth
+  evaluate: True
+  eval_freq: 1
+
+Distributed:
+  dist_url: "env://"
+  dist_backend: "gloo"
+  multiprocessing_distributed: False
+  world_size: 1
+  rank: 0
+
